@@ -18,7 +18,7 @@ An interactive visualization of RxJS operator behavior as **Operator Trees**: ea
 
 Three layers, in dependency order:
 
-1. **Docs** (`docs/`) — `RxJS-Operator-Behavior-Family-Trees-and-Policies.md` is the founding method document; `RxJS-Operator-Trees.md` is the full invariant/variant catalog (15 root behaviors); `RxJS-Operator-Coordinate-Index.md` is **generated — never edit by hand**.
+1. **Docs** (`docs/`) — `RxJS-Operator-Behavior-Family-Trees-and-Policies.md` is the founding method document; `RxJS-Operator-Trees.md` is the full invariant/variant catalog; `RxJS-Recurring-Axes.md` explains the seven cross-family recurring axes (mirrored by `src/app/recurring.ts`); `RxJS-Operator-Coordinate-Index.md` is **generated — never edit by hand**.
 2. **Model** (`src/model/`) — the trees as typed data: `types.ts`, one file per family group in `families/`, aggregated in `index.ts` with `EXCLUDED_EXPORTS`. `coverage.test.ts` asserts every runtime export of `rxjs`, `rxjs/operators`, `rxjs/ajax`, `rxjs/fetch`, `rxjs/webSocket` is mapped exactly once or deliberately excluded — this test is the definition of "all operators covered". When adding/changing mappings, run the tests, then regenerate the index doc.
 3. **App** (`src/app/`) — `selector.ts` (pure matching logic, unit-tested), `render.ts` (family explorer, concrete-behavior selector, reverse lookup, recurring-axes view), `recurring.ts` (cross-family axis groups). Magenta theme (#C2185B) in `src/style.css`.
 

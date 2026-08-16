@@ -231,6 +231,7 @@ export function renderApp(root: HTMLElement): void {
           'section',
           { class: 'card' },
           el('h3', {}, group.title),
+          el('p', { class: 'axis-meaning' }, group.meaning),
           el('p', { class: 'hint' }, group.description),
           ...group.members.map((member) => {
             const family = familyById(member.familyId);

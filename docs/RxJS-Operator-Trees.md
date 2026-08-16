@@ -64,7 +64,8 @@ The catalog covers fifteen root behaviors:
 ```
 
 Together with the placement rules in §16 these trees give coordinates to every
-RxJS v7 export; `RxJS-Operator-Coordinate-Index.md` lists the full mapping.
+RxJS v7 export; `RxJS-Operator-Coordinate-Index.md` lists the full mapping, and
+`RxJS-Recurring-Axes.md` explains the variant axes that recur across families.
 
 ---
 
@@ -928,23 +929,30 @@ The empty cells are again API-surface holes the table makes visible.
 # 17. Recurring variant axes
 
 The strongest result of the catalog: **a small set of axes recurs across
-unrelated families.** Learning the axes once explains dozens of operators.
+unrelated families.** Learning an axis once explains dozens of operators.
 
-## Determination — { fixed, dynamic/selected }
+**`RxJS-Recurring-Axes.md` is the full reference** — meaning, variants,
+occurrences, and consequences of every recurring axis. The seven axes at a
+glance:
 
 ```text
-throttle duration      throttleTime(ms)     throttle(v => d$)
-audit duration         auditTime(ms)        audit(v => d$)
-debounce silence       debounceTime(ms)     debounce(v => d$)
-delay displacement     delay(ms)            delayWhen(v => d$)
-buffer boundary        bufferTime(ms)       bufferWhen(() => c$)
-group lifetime         —                    groupBy(..., { duration })
-share reset            resetOnX: boolean    resetOnX: () => n$
-retry/repeat delay     { delay: ms }        { delay: () => n$ }
-uniqueness key         value itself         keySelector
+1. Determination        fixed vs dynamic/selected — is the parameter a
+                        static value, or computed per value/event?
+2. Trigger kind         count / duration / notifier / predicate — what
+                        kind of event marks the decision moment?
+3. Edge                 leading vs trailing — which end of a window or
+                        sequence does the behavior act on?
+4. Latest-value memory  a one-slot cache, overwritten by newer values,
+                        read at a decision moment — conflation on purpose
+5. Overlap policy       alongside / queue / kill previous / drop newcomer
+                        — new work arrives while old work is live
+6. Input form           static creation / *With / *All / *Map — the same
+                        behavior reached from different starting shapes
+7. Empty policy         silent / default / error — what does "produced
+                        nothing" mean at completion?
 ```
 
-## Trigger kind — { count, duration, notifier, predicate }
+The emblematic example — one axis spanning four families:
 
 ```text
               count            duration          notifier        predicate
@@ -956,25 +964,6 @@ sample        —                sampleTime(ms)    sample(n$)      —
 
 The empty cells are **holes in the API surface** the tree makes visible —
 e.g. there is no `bufferWhile(predicate)`; the behavior must be composed.
-
-## Edge — { leading, trailing }
-
-```text
-throttle edges           v------ | ------v | v------v
-audit / debounce         trailing is part of the INVARIANT, not a variant
-take / takeLast          leading / trailing anchor over the whole sequence
-first / last             the same anchor, with an error empty-policy
-```
-
-## Latest-value memory
-
-```text
-audit, debounce          remember latest during a window
-sample                   remember latest since last trigger
-combineLatest,           remember latest per source slot
-withLatestFrom
-shareReplay(1)           remember latest across subscribers
-```
 
 ---
 
