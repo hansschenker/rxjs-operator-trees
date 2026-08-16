@@ -2,6 +2,7 @@ import { ALL_FAMILIES, ALL_MAPPINGS, familyById, mappingsForFamily } from '../mo
 import type { Axis, OperatorMapping } from '../model/types.ts';
 import { el } from './dom.ts';
 import { RECURRING_GROUPS } from './recurring.ts';
+import { hashForRoute, parseHash } from './router.ts';
 import { isCompleteSelection, matchingOperators, searchOperators, coversVariant } from './selector.ts';
 import type { Selection } from './selector.ts';
 
@@ -59,8 +60,24 @@ export function renderApp(root: HTMLElement): void {
     ),
   );
 
+  const hashForState = (): string =>
+    hashForRoute(
+      state.view === 'recurring'
+        ? { view: 'recurring' }
+        : { view: 'family', familyId: state.familyId, pinned: state.pinned },
+    );
+
+  const applyHash = (): void => {
+    const route = parseHash(window.location.hash);
+    if (route.view === 'recurring') update({ view: 'recurring', query: '' });
+    else openFamily(route.familyId, route.pinned);
+  };
+
   root.replaceChildren(header, content);
-  renderContent();
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash !== hashForState()) applyHash();
+  });
+  applyHash();
 
   function renderContent(): void {
     if (state.query.trim() !== '') {
@@ -71,6 +88,7 @@ export function renderApp(root: HTMLElement): void {
       renderSidebar(),
       state.view === 'recurring' ? renderRecurring() : renderFamily(),
     );
+    if (window.location.hash !== hashForState()) window.location.hash = hashForState();
   }
 
   function renderSidebar(): HTMLElement {
