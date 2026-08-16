@@ -3,6 +3,9 @@ import type { Axis, OperatorMapping } from '../model/types.ts';
 import { el } from './dom.ts';
 import { RECURRING_GROUPS } from './recurring.ts';
 import { hashForRoute, parseHash } from './router.ts';
+import { simulateAudit, simulateDebounce, simulateDelay, simulateSample, simulateThrottle } from './simulate.ts';
+import type { Trace } from './simulate.ts';
+import { renderTimeline } from './timeline.ts';
 import { isCompleteSelection, matchingOperators, searchOperators, coversVariant } from './selector.ts';
 import type { Selection } from './selector.ts';
 
@@ -13,6 +16,54 @@ interface AppState {
   pinned: string | null;
   query: string;
 }
+
+const LEGEND_ITEMS: Record<string, Array<[string, string]>> = {
+  throttle: [
+    ['lg-dot-in', 'source value'],
+    ['lg-dot-in lg-dropped', 'suppressed (dropped)'],
+    ['lg-win', 'throttle window'],
+    ['lg-dot-out', 'emission'],
+    ['lg-link', 'source → emission'],
+  ],
+  audit: [
+    ['lg-dot-in', 'source value'],
+    ['lg-dot-in lg-dropped', 'superseded'],
+    ['lg-win', 'audit window (no restart)'],
+    ['lg-dot-out', 'emission at close'],
+    ['lg-link', 'source → emission'],
+  ],
+  debounce: [
+    ['lg-dot-in', 'source value'],
+    ['lg-dot-in lg-dropped', 'superseded'],
+    ['lg-win', 'silence timer'],
+    ['lg-win lg-cancel', 'restarted timer'],
+    ['lg-dot-out', 'emission after full silence'],
+    ['lg-link', 'source → emission'],
+  ],
+  sample: [
+    ['lg-dot-in', 'source value'],
+    ['lg-dot-in lg-dropped', 'never sampled'],
+    ['lg-tick', 'sampling trigger'],
+    ['lg-tick lg-missed', 'trigger, no new value'],
+    ['lg-dot-out', 'snapshot'],
+    ['lg-link', 'source → snapshot'],
+  ],
+  delay: [
+    ['lg-dot-in', 'source value'],
+    ['lg-win', 'displacement'],
+    ['lg-dot-out', 'delayed delivery'],
+    ['lg-link', 'source → delivery'],
+  ],
+};
+
+const legendFor = (familyId: string): HTMLElement =>
+  el(
+    'div',
+    { class: 'leg' },
+    ...(LEGEND_ITEMS[familyId] ?? []).map(([glyph, label]) =>
+      el('span', { class: 'leg-item' }, el('span', { class: glyph }), label),
+    ),
+  );
 
 const formatCoordinates = (mapping: OperatorMapping): string =>
   Object.entries(mapping.coordinates)
@@ -164,8 +215,69 @@ export function renderApp(root: HTMLElement): void {
       el('div', { class: 'family-head' }, el('h2', {}, family.name), el('span', { class: 'badge' }, family.category)),
       invariants,
       axes,
+      temporalDiagram(family.id) ?? el('span', {}),
       results,
       notes,
+    );
+  }
+
+  function temporalDiagram(familyId: string): HTMLElement | null {
+    const sel = state.selection;
+    const durVariant = (axisId: string): 'fixed' | 'dynamic' => (sel[axisId] === 'dynamic' ? 'dynamic' : 'fixed');
+    let trace: Trace;
+    let caption: string;
+    switch (familyId) {
+      case 'throttle': {
+        const e = sel['edge'];
+        const edge = e === 'trailing' || e === 'both' ? e : 'leading';
+        const d = durVariant('duration');
+        trace = simulateThrottle(d, edge);
+        caption = `${d === 'fixed' ? 'throttleTime(5)' : 'throttle(v => d$)  — window length varies'} · ${edge} edge`;
+        break;
+      }
+      case 'audit': {
+        const d = durVariant('duration');
+        trace = simulateAudit(d);
+        caption = d === 'fixed' ? 'auditTime(5)' : 'audit(v => d$)  — window length varies';
+        break;
+      }
+      case 'debounce': {
+        const d = durVariant('duration');
+        trace = simulateDebounce(d);
+        caption = d === 'fixed' ? 'debounceTime(5)' : 'debounce(v => d$)  — silence length varies';
+        break;
+      }
+      case 'sample': {
+        const trigger = sel['trigger'] === 'notifier' ? 'notifier' : 'periodic';
+        trace = simulateSample(trigger);
+        caption = trigger === 'periodic' ? 'sampleTime(5)' : 'sample(notifier$)  — irregular triggers';
+        break;
+      }
+      case 'delay': {
+        const mode = sel['displacement'] === 'dynamic' ? 'dynamic' : 'relative';
+        trace = simulateDelay(mode);
+        caption = mode === 'relative' ? 'delay(5)' : 'delayWhen(v => timer(d(v)))  — note the reordering';
+        break;
+      }
+      default:
+        return null;
+    }
+    const host = el('div', { class: 'timeline-host' });
+    const mount = (): void => host.replaceChildren(renderTimeline(trace));
+    mount();
+    return el(
+      'section',
+      { class: 'card timeline-card' },
+      el('h3', {}, 'Temporal diagram — two layers'),
+      el(
+        'p',
+        { class: 'hint' },
+        'Observable layer: source values in, emissions out. Operator-control layer (ctl): the windows, timers and triggers between them. The diagram follows the selected variants.',
+      ),
+      el('p', { class: 'timeline-caption' }, el('code', {}, caption)),
+      host,
+      legendFor(familyId),
+      el('button', { class: 'clear', onclick: mount }, 'replay'),
     );
   }
 

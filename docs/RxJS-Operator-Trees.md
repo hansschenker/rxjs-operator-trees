@@ -364,6 +364,15 @@ emits **nothing** until the input pauses; `delay` reproduces the fire-hose
 later. That behavioral difference — not the shared `...Time` suffix — is
 the category boundary.
 
+The app renders each of these five families as a **two-layer temporal
+diagram**: the observable layer (source values in, emissions out) plus the
+operator-control layer (suppression windows, restarting silence timers,
+sampling ticks, displacement spans) — the founding document's rule that
+timing explanations must show the timers and gates, not only the values.
+All five run the **same input scenario**, so the operators are directly
+comparable, and the diagram follows the selected variants (e.g. throttle's
+edge choice, dynamic durations, sample's notifier).
+
 ## The lossless rate limiters live in Grouping (§4)
 
 `bufferTime(t)` / `windowTime(t)` emit at the same bounded cadence as the
