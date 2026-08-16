@@ -63,6 +63,7 @@ export const grouping: OperatorFamily = {
   notes: [
     'buffer and window share the same coordinate system; only materialization differs.',
     'The second argument of bufferCount/bufferTime is the topology axis in disguise.',
+    'bufferTime/windowTime are the LOSSLESS rate limiters: same bounded cadence as throttle/audit/sample, but every value survives in a batch — auditTime(t) ≈ bufferTime(t) + last of each batch.',
   ],
 };
 

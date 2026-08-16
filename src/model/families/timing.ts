@@ -13,7 +13,7 @@ const durationAxis = (question: string) => ({
 export const throttleFamily: OperatorFamily = {
   id: 'throttle',
   name: 'Throttle',
-  category: 'Timing',
+  category: 'Rate-Limiting',
   invariants: [
     'a source value opens a throttle window',
     'during the window further source values are suppressed',
@@ -37,7 +37,7 @@ export const throttleFamily: OperatorFamily = {
 export const auditFamily: OperatorFamily = {
   id: 'audit',
   name: 'Audit',
-  category: 'Timing',
+  category: 'Rate-Limiting',
   invariants: [
     'a source value opens a non-restarting window',
     'the latest value during the window is remembered',
@@ -61,7 +61,7 @@ export const debounceFamily: OperatorFamily = {
 export const sampleFamily: OperatorFamily = {
   id: 'sample',
   name: 'Sample',
-  category: 'Timing',
+  category: 'Rate-Limiting',
   invariants: [
     'a trigger, independent of source values, requests a snapshot',
     'the snapshot is the latest NEW source value',
@@ -111,11 +111,16 @@ export const delayFamily: OperatorFamily = {
   ],
 };
 
+/**
+ * Ordered so the two categories group consecutively in displays:
+ * Rate-Limiting (bounded output under sustained input: throttle, audit,
+ * sample) before Timing (temporal placement, no rate bound: debounce, delay).
+ */
 export const timingFamilies: OperatorFamily[] = [
   throttleFamily,
   auditFamily,
-  debounceFamily,
   sampleFamily,
+  debounceFamily,
   delayFamily,
 ];
 

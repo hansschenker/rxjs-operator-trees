@@ -1,5 +1,5 @@
 import type { Exclusion, OperatorFamily, OperatorMapping } from './types.ts';
-import { selection, selectionMappings } from './families/selection.ts';
+import { selection, selectionMappings, sourceSelection, sourceSelectionMappings } from './families/selection.ts';
 import { transformation, transformationMappings } from './families/transformation.ts';
 import { accumulation, accumulationMappings } from './families/accumulation.ts';
 import { grouping, groupingMappings } from './families/grouping.ts';
@@ -15,6 +15,7 @@ export type * from './types.ts';
 
 export const ALL_FAMILIES: OperatorFamily[] = [
   selection,
+  sourceSelection,
   transformation,
   accumulation,
   grouping,
@@ -29,6 +30,7 @@ export const ALL_FAMILIES: OperatorFamily[] = [
 
 export const ALL_MAPPINGS: OperatorMapping[] = [
   ...selectionMappings,
+  ...sourceSelectionMappings,
   ...transformationMappings,
   ...accumulationMappings,
   ...groupingMappings,

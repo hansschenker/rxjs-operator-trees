@@ -46,11 +46,11 @@ Reading rules:
 The catalog covers fifteen root behaviors:
 
 ```text
- 1. Selection
+ 1. Selection          (sibling: Source Selection — race, iif)
  2. Transformation
  3. Accumulation (State)
  4. Grouping
- 5. Timing            (throttle, audit, debounce, sample, delay)
+ 5. Rate-Limiting & Timing   (throttle, audit, sample | debounce, delay)
  6. Flattening / Concurrency
  7. Combining
  8. Sharing
@@ -149,6 +149,42 @@ uniqueness
   output completes and the source is unsubscribed.
 - `takeWhile`'s `inclusive` flag is a boundary policy: does the value that
   fails the predicate still belong to the selected region?
+
+## Sibling root: source selection
+
+`race` shares Selection's geometry but operates one level up — it keeps one
+**source** and drops the rest, rather than keeping some values:
+
+```text
+SOURCE SELECTION
+│
+├── INVARIANT
+│   ├── competes several whole sources; exactly one source survives
+│   ├── the winner's values pass through unchanged
+│   └── losing sources are unsubscribed, or never subscribed at all
+│
+└── VARIANTS
+    ├── 1. Decision — what picks the winning source
+    │   ├── first notification wins    race(a$, b$) / raceWith(b$)
+    │   └── condition at subscribe     iif(() => cond, then$, else$)
+    │
+    └── 2. Input form
+        ├── static creation            race(...), iif(...)
+        └── *With operator suffix      raceWith(...)
+```
+
+What this tree explains:
+
+- In `race`, the first notification of **any** kind wins — a source that
+  errors before anyone emits errors the race; an early completion completes
+  it. "First to emit a value" is a common misreading.
+- **`iif` is reclassified here, out of Creation.** Its values come from the
+  two given source Observables, which fails the Creation invariant ("values
+  originate from non-observable material"). Behaviorally it is source
+  selection whose decision is made by a predicate at subscribe time instead
+  of by the sources themselves.
+- `condition × *With` is a hole: there is no `iifWith`. Compose it with
+  `defer` when needed.
 
 ---
 
@@ -292,25 +328,56 @@ groupBy(keySelector, options)
 
 ---
 
-# 5. Timing
+# 5. Rate-Limiting and Timing
 
-Category-level tree:
+The five temporal sub-roots split into two categories by one test —
+**what happens under sustained fire-hose input?**
 
 ```text
-TIMING
+RATE-LIMITING — bounded output under sustained input
 │
 ├── INVARIANT
 │   ├── values are never transformed
-│   └── a temporal policy decides WHEN a value is delivered
-│       and (for the rate limiters) WHETHER it survives
+│   └── the output rate is bounded: at most one emission per
+│       window / period, no matter how fast the source fires
 │
 └── SUB-ROOTS
-    ├── throttle     suppression window, edge choice
-    ├── audit        non-restarting window, trailing emit
-    ├── debounce     restarting silence, trailing emit
-    ├── sample       independent trigger takes snapshots
-    └── delay        pure temporal displacement
+    ├── throttle     suppression window, edge choice        → steady drip
+    ├── audit        non-restarting window, trailing emit   → steady drip
+    └── sample       independent trigger takes snapshots    → steady drip
+
+
+TIMING — temporal placement, no bounded cadence
+│
+├── INVARIANT
+│   ├── values are never transformed
+│   └── a temporal policy decides WHEN delivery happens
+│
+└── SUB-ROOTS
+    ├── debounce     restarting silence, trailing emit      → silence until quiescence
+    └── delay        pure temporal displacement             → fire-hose, shifted
 ```
+
+Under a fire-hose, the rate limiters emit a steady bounded drip; `debounce`
+emits **nothing** until the input pauses; `delay` reproduces the fire-hose
+later. That behavioral difference — not the shared `...Time` suffix — is
+the category boundary.
+
+## The lossless rate limiters live in Grouping (§4)
+
+`bufferTime(t)` / `windowTime(t)` emit at the same bounded cadence as the
+lossy limiters, but batch every value instead of picking one:
+
+```text
+auditTime(t)  ≈  bufferTime(t) + last value of each batch
+
+lossy     rate-limiting    throttle / audit / sample    keep one, drop the rest
+lossless  rate-limiting    bufferTime / windowTime      keep all, in batches
+```
+
+They stay in the Grouping family because they share its full coordinate
+system with the key-partitioned members (`groupBy`, `partition`), which are
+not rate limiters at all.
 
 ## 5.1 Throttle
 
@@ -353,23 +420,7 @@ AUDIT
         └── dynamic      audit(v => duration$)
 ```
 
-## 5.3 Debounce
-
-```text
-DEBOUNCE
-│
-├── INVARIANT
-│   ├── every source value starts a silence timer
-│   ├── the next value restarts the timer and replaces the pending value
-│   └── the pending value emits after uninterrupted silence    ------v
-│
-└── VARIANTS
-    └── 1. Silence duration
-        ├── fixed        debounceTime(ms)
-        └── dynamic      debounce(v => duration$)
-```
-
-## 5.4 Sample
+## 5.3 Sample
 
 ```text
 SAMPLE
@@ -383,6 +434,22 @@ SAMPLE
     └── 1. Trigger
         ├── periodic clock       sampleTime(period)    ---|---|---
         └── external notifier    sample(notifier$)
+```
+
+## 5.4 Debounce
+
+```text
+DEBOUNCE
+│
+├── INVARIANT
+│   ├── every source value starts a silence timer
+│   ├── the next value restarts the timer and replaces the pending value
+│   └── the pending value emits after uninterrupted silence    ------v
+│
+└── VARIANTS
+    └── 1. Silence duration
+        ├── fixed        debounceTime(ms)
+        └── dynamic      debounce(v => duration$)
 ```
 
 ## 5.5 Delay
@@ -404,22 +471,22 @@ DELAY
         └── after notifier              (subscriptionDelay — deprecated)
 ```
 
-## The timing families side by side
+## The five temporal families side by side
 
 ```text
-              window restarts?   who triggers?      what survives?    glyph
-throttle      no                 source value       edge-dependent    v--- / ---v / v---v
-audit         no                 source value       latest, at close  ------v
-debounce      yes                source value       latest, after     ------v
-                                                    full silence
-sample        (no window)        independent        latest new        ---|---|---
-                                 clock/notifier                          v   v
-delay         (no window)        source value       everything        v---→---v
+              category        window restarts?  who triggers?     what survives?    glyph
+throttle      rate-limiting   no                source value      edge-dependent    v--- / ---v / v---v
+audit         rate-limiting   no                source value      latest, at close  ------v
+sample        rate-limiting   (no window)       independent       latest new        ---|---|---
+                                                clock/notifier                         v   v
+debounce      timing          yes               source value      latest, after     ------v
+                                                                  full silence
+delay         timing          (no window)       source value      everything        v---→---v
 ```
 
 The invariant branch is what distinguishes them; the variant branches are
-nearly identical (`fixed` vs `dynamic` duration everywhere). **Timing
-operators differ by invariant, not by variant.**
+nearly identical (`fixed` vs `dynamic` duration everywhere). **The temporal
+families differ by invariant, not by variant.**
 
 ---
 
@@ -526,7 +593,8 @@ forkJoin        completion  × final value
   both degenerate to "the end".
 - **`race` does not belong here.** It emits the winning source's values
   unchanged and drops the other sources entirely — one slot total, not one
-  slot per source. It is *Selection applied to sources*, not combination.
+  slot per source. It is *Selection applied to sources*, not combination;
+  its tree lives in §1 (Source Selection).
 
 ---
 
@@ -640,7 +708,6 @@ CREATION
     │   ├── clock                 interval(ms), timer(due, period?), animationFrames()
     │   ├── event binding         fromEvent(target, name), fromEventPattern(add, remove)
     │   ├── lazy factory          defer(() => source)
-    │   ├── conditional           iif(() => cond, then$, else$)
     │   └── external resource     ajax(...), fromFetch(...), webSocket(...), using(...)
     │
     ├── 2. Termination preset — origins with zero values
@@ -657,7 +724,9 @@ CREATION
 
 - **`defer` is the determination axis applied to creation itself**: any fixed
   origin becomes dynamic/selected-per-subscriber by wrapping it in a factory.
-  `iif` is `defer` specialized to a boolean choice.
+- **`iif` does not belong here.** Its values come from the two given source
+  Observables, failing this family's invariant — it is source selection
+  decided at subscribe time (§1, Source Selection).
 - `timer(due, period)` unifies two origins: a one-shot deadline that hands over
   to a clock — which is why `timer(0, ms)` is `interval(ms)` without the
   initial wait.

@@ -78,6 +78,46 @@ export const selectionMappings: OperatorMapping[] = [
   { operator: 'ignoreElements', familyId: 'selection', status: 'current', coordinates: { criterion: 'predicate', polarity: 'drop', anchor: 'everywhere' }, notes: 'drops every value; only the terminal notification survives' },
   { operator: 'defaultIfEmpty', familyId: 'selection', status: 'current', coordinates: { empty: 'default' }, notes: 'the empty-policy axis standalone' },
   { operator: 'throwIfEmpty', familyId: 'selection', status: 'current', coordinates: { empty: 'error' }, notes: 'the empty-policy axis standalone' },
-  { operator: 'race', familyId: 'selection', status: 'current', coordinates: {}, notes: 'selection over SOURCES: the first source to emit wins, the others are dropped' },
-  { operator: 'raceWith', familyId: 'selection', status: 'current', coordinates: {}, notes: 'operator form of race' },
+];
+
+export const sourceSelection: OperatorFamily = {
+  id: 'source-selection',
+  name: 'Source Selection',
+  category: 'Selection',
+  invariants: [
+    'competes several whole sources; exactly one source survives',
+    "the winner's values pass through unchanged",
+    'losing sources are unsubscribed, or never subscribed at all',
+  ],
+  axes: [
+    {
+      id: 'decision',
+      name: 'Decision',
+      question: 'What picks the winning source?',
+      variants: [
+        { id: 'first-notification', name: 'first notification wins' },
+        { id: 'condition', name: 'condition at subscribe' },
+      ],
+    },
+    {
+      id: 'input',
+      name: 'Input form',
+      question: 'How are the competing sources supplied?',
+      variants: [
+        { id: 'static-creation', name: 'static creation function' },
+        { id: 'with-suffix', name: '*With operator suffix' },
+      ],
+    },
+  ],
+  notes: [
+    'Selection lifted from values to sources: the same keep-one / drop-the-rest geometry, one level up.',
+    'In race, the first notification of ANY kind wins — a source that errors before anyone emits errors the race.',
+    "iif fails the Creation invariant (its values come from the given sources), so it belongs here: source selection decided at subscribe time.",
+  ],
+};
+
+export const sourceSelectionMappings: OperatorMapping[] = [
+  { operator: 'race', familyId: 'source-selection', status: 'current', coordinates: { decision: 'first-notification', input: 'static-creation' } },
+  { operator: 'raceWith', familyId: 'source-selection', status: 'current', coordinates: { decision: 'first-notification', input: 'with-suffix' } },
+  { operator: 'iif', familyId: 'source-selection', status: 'current', coordinates: { decision: 'condition', input: 'static-creation' }, notes: 'condition × operator-suffix is a hole — there is no iifWith; compose with defer' },
 ];

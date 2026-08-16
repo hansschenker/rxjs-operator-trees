@@ -24,8 +24,6 @@ axis, chosen per call via arguments or config.
 | `first` | current | criterion: {predicate \| position}, polarity: keep, anchor: front, empty: {default \| error} |  |
 | `ignoreElements` | current | criterion: predicate, polarity: drop, anchor: everywhere | drops every value; only the terminal notification survives |
 | `last` | current | criterion: {predicate \| position}, polarity: keep, anchor: back, empty: {default \| error} |  |
-| `race` | current | — | selection over SOURCES: the first source to emit wins, the others are dropped |
-| `raceWith` | current | — | operator form of race |
 | `skip` | current | criterion: count, polarity: drop, anchor: front |  |
 | `skipLast` | current | criterion: count, polarity: drop, anchor: back |  |
 | `skipUntil` | current | criterion: notifier, polarity: drop, anchor: front |  |
@@ -35,6 +33,14 @@ axis, chosen per call via arguments or config.
 | `takeUntil` | current | criterion: notifier, polarity: keep, anchor: front, empty: silent |  |
 | `takeWhile` | current | criterion: predicate, polarity: keep, anchor: front, empty: silent | inclusive flag decides whether the boundary value belongs to the kept region |
 | `throwIfEmpty` | current | empty: error | the empty-policy axis standalone |
+
+### Source Selection
+
+| Operator | Status | Coordinates | Notes |
+| --- | --- | --- | --- |
+| `iif` | current | decision: condition, input: static-creation | condition × operator-suffix is a hole — there is no iifWith; compose with defer |
+| `race` | current | decision: first-notification, input: static-creation |  |
+| `raceWith` | current | decision: first-notification, input: with-suffix |  |
 
 ## Transformation
 
@@ -81,7 +87,7 @@ axis, chosen per call via arguments or config.
 | `windowToggle` | current | materialization: inner-observable, rule: boundary, trigger: notifier, determination: dynamic, topology: {contiguous \| overlapping \| gapped} |  |
 | `windowWhen` | current | materialization: inner-observable, rule: boundary, trigger: notifier, determination: dynamic, topology: contiguous |  |
 
-## Timing
+## Rate-Limiting
 
 ### Throttle
 
@@ -97,19 +103,21 @@ axis, chosen per call via arguments or config.
 | `audit` | current | duration: dynamic |  |
 | `auditTime` | current | duration: fixed |  |
 
-### Debounce
-
-| Operator | Status | Coordinates | Notes |
-| --- | --- | --- | --- |
-| `debounce` | current | duration: dynamic |  |
-| `debounceTime` | current | duration: fixed |  |
-
 ### Sample
 
 | Operator | Status | Coordinates | Notes |
 | --- | --- | --- | --- |
 | `sample` | current | trigger: notifier |  |
 | `sampleTime` | current | trigger: periodic |  |
+
+## Timing
+
+### Debounce
+
+| Operator | Status | Coordinates | Notes |
+| --- | --- | --- | --- |
+| `debounce` | current | duration: dynamic |  |
+| `debounceTime` | current | duration: fixed |  |
 
 ### Delay
 
@@ -214,7 +222,6 @@ axis, chosen per call via arguments or config.
 | `fromEventPattern` | current | origin: event |  |
 | `fromFetch` | current | origin: resource | entry point rxjs/fetch |
 | `generate` | current | origin: iteration, scheduling: {default \| explicit} |  |
-| `iif` | current | origin: conditional |  |
 | `interval` | current | origin: clock, scheduling: {default \| explicit} |  |
 | `NEVER` | current | termination: never |  |
 | `of` | current | origin: literal, scheduling: default |  |
@@ -333,6 +340,6 @@ axis, chosen per call via arguments or config.
 
 ## Totals
 
-- Families: 21
+- Families: 22
 - Mapped operators: 140 (120 current, 20 deprecated)
 - Excluded exports: 40

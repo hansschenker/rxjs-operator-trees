@@ -21,7 +21,6 @@ export const creation: OperatorFamily = {
         { id: 'clock', name: 'clock' },
         { id: 'event', name: 'event binding' },
         { id: 'lazy-factory', name: 'lazy factory' },
-        { id: 'conditional', name: 'conditional' },
         { id: 'resource', name: 'external resource' },
         { id: 'callback', name: 'callback binding' },
       ],
@@ -47,8 +46,9 @@ export const creation: OperatorFamily = {
     },
   ],
   notes: [
-    'defer is the determination axis applied to creation itself; iif is defer with a boolean.',
+    'defer is the determination axis applied to creation itself.',
     'EMPTY, NEVER and throwError are the degenerate corners of the origin axis.',
+    'iif is NOT here: its values come from the given sources, failing this invariant — see Source Selection.',
   ],
 };
 
@@ -63,7 +63,6 @@ export const creationMappings: OperatorMapping[] = [
   { operator: 'fromEvent', familyId: 'creation', status: 'current', coordinates: { origin: 'event' } },
   { operator: 'fromEventPattern', familyId: 'creation', status: 'current', coordinates: { origin: 'event' } },
   { operator: 'defer', familyId: 'creation', status: 'current', coordinates: { origin: 'lazy-factory' } },
-  { operator: 'iif', familyId: 'creation', status: 'current', coordinates: { origin: 'conditional' } },
   { operator: 'using', familyId: 'creation', status: 'current', coordinates: { origin: 'resource' } },
   { operator: 'ajax', familyId: 'creation', status: 'current', coordinates: { origin: 'resource' }, notes: 'entry point rxjs/ajax' },
   { operator: 'fromFetch', familyId: 'creation', status: 'current', coordinates: { origin: 'resource' }, notes: 'entry point rxjs/fetch' },
