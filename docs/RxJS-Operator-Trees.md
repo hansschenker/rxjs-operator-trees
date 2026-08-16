@@ -389,6 +389,12 @@ They stay in the Grouping family because they share its full coordinate
 system with the key-partitioned members (`groupBy`, `partition`), which are
 not rate limiters at all.
 
+The app's Grouping page shows this as a temporal diagram: contiguous
+`bufferTime(5)` windows tiling the timeline, every value linked into its
+batch, and empty windows emitting `[]` — the same input scenario the five
+temporal families use, so lossy and lossless rate limiting can be compared
+directly.
+
 ## 5.1 Throttle
 
 ```text

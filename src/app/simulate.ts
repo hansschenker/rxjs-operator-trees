@@ -30,6 +30,12 @@ export interface Span {
   lane?: number;
 }
 
+/** Explicit source→emission connection for outputs with many sources (batches). */
+export interface Link {
+  fromT: number;
+  toT: number;
+}
+
 export interface Trace {
   length: number;
   inputs: Marble[];
@@ -37,6 +43,7 @@ export interface Trace {
   ticks: number[];
   missedTicks: number[];
   outputs: Marble[];
+  links: Link[];
 }
 
 /** Shared input: a burst, a lone value, then a second burst. */
@@ -67,10 +74,12 @@ const makeTrace = (
   outputs: Marble[],
   ticks: number[] = [],
   missedTicks: number[] = [],
+  links: Link[] = [],
 ): Trace => {
-  const sources = new Set(outputs.map((o) => o.sourceT));
+  const sources = new Set<number | undefined>(outputs.map((o) => o.sourceT));
+  for (const link of links) sources.add(link.fromT);
   for (const m of inputs) if (!sources.has(m.t)) m.dropped = true;
-  return { length: TIMELINE_LENGTH, inputs, spans, ticks, missedTicks, outputs };
+  return { length: TIMELINE_LENGTH, inputs, spans, ticks, missedTicks, outputs, links };
 };
 
 export function simulateThrottle(duration: DurationVariant, edge: ThrottleEdge): Trace {
@@ -158,6 +167,27 @@ export function simulateSample(trigger: SampleTrigger): Trace {
     }
   }
   return makeTrace(inputs, [], outputs, ticks, missedTicks);
+}
+
+/**
+ * The lossless rate limiter (Grouping): contiguous fixed-duration windows
+ * tile the timeline; every value survives inside a batch emitted at the
+ * window close. Windows with no values emit an empty array — as bufferTime
+ * really does.
+ */
+export function simulateBufferTime(): Trace {
+  const inputs = freshInputs();
+  const spans: Span[] = [];
+  const outputs: Marble[] = [];
+  const links: Link[] = [];
+  for (let start = 0; start + FIXED <= TIMELINE_LENGTH; start += FIXED) {
+    const end = start + FIXED;
+    spans.push({ start, end });
+    const batch = inputs.filter((v) => v.t >= start && v.t < end);
+    outputs.push({ t: end, label: `[${batch.map((v) => v.label).join(',')}]` });
+    for (const v of batch) links.push({ fromT: v.t, toT: end });
+  }
+  return makeTrace(inputs, spans, outputs, [], [], links);
 }
 
 export function simulateDelay(mode: DelayMode): Trace {

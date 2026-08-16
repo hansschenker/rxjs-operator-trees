@@ -3,7 +3,7 @@ import type { Axis, OperatorMapping } from '../model/types.ts';
 import { el } from './dom.ts';
 import { RECURRING_GROUPS } from './recurring.ts';
 import { hashForRoute, parseHash } from './router.ts';
-import { simulateAudit, simulateDebounce, simulateDelay, simulateSample, simulateThrottle } from './simulate.ts';
+import { simulateAudit, simulateBufferTime, simulateDebounce, simulateDelay, simulateSample, simulateThrottle } from './simulate.ts';
 import type { Trace } from './simulate.ts';
 import { renderTimeline } from './timeline.ts';
 import { isCompleteSelection, matchingOperators, searchOperators, coversVariant } from './selector.ts';
@@ -53,6 +53,12 @@ const LEGEND_ITEMS: Record<string, Array<[string, string]>> = {
     ['lg-win', 'displacement'],
     ['lg-dot-out', 'delayed delivery'],
     ['lg-link', 'source → delivery'],
+  ],
+  grouping: [
+    ['lg-dot-in', 'source value (all survive)'],
+    ['lg-win', 'buffer window (contiguous tiling)'],
+    ['lg-dot-out', 'batch emitted at close — [] when empty'],
+    ['lg-link', 'value → its batch'],
   ],
 };
 
@@ -257,6 +263,11 @@ export function renderApp(root: HTMLElement): void {
         const mode = sel['displacement'] === 'dynamic' ? 'dynamic' : 'relative';
         trace = simulateDelay(mode);
         caption = mode === 'relative' ? 'delay(5)' : 'delayWhen(v => timer(d(v)))  — note the reordering';
+        break;
+      }
+      case 'grouping': {
+        trace = simulateBufferTime();
+        caption = 'bufferTime(5)  — array × duration × fixed × contiguous: the lossless rate limiter';
         break;
       }
       default:

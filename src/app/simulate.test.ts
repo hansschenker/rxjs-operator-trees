@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   simulateAudit,
+  simulateBufferTime,
   simulateDebounce,
   simulateDelay,
   simulateSample,
@@ -69,6 +70,16 @@ describe('simulateSample', () => {
     const trace = simulateSample('notifier');
     expect(out(trace)).toEqual(['b@3', 'c@9', 'd@14', 'g@21']);
     expect(trace.missedTicks).toEqual([24.5]);
+  });
+});
+
+describe('simulateBufferTime', () => {
+  it('tiles the timeline with contiguous windows; every value survives in a batch', () => {
+    const trace = simulateBufferTime();
+    expect(out(trace)).toEqual(['[a,b,c]@5', '[]@10', '[d]@15', '[e,f,g]@20', '[]@25']);
+    expect(dropped(trace)).toEqual([]);
+    expect(trace.spans).toHaveLength(5);
+    expect(trace.links).toHaveLength(7);
   });
 });
 

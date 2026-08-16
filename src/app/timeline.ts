@@ -1,4 +1,4 @@
-import type { Span, Trace } from './simulate.ts';
+import type { Link, Span, Trace } from './simulate.ts';
 import { svgEl } from './svg.ts';
 
 const W = 760;
@@ -105,13 +105,14 @@ export function renderTimeline(trace: Trace): SVGSVGElement {
     if (missed) g.append(svgEl('circle', { cx: String(x(t)), cy: String(ctrlTop - 5), r: '3', class: 'tl-missed-dot' }));
   }
 
-  for (const o of trace.outputs) {
-    if (o.sourceT === undefined) continue;
+  const links: Link[] = [...trace.links];
+  for (const o of trace.outputs) if (o.sourceT !== undefined) links.push({ fromT: o.sourceT, toT: o.t });
+  for (const link of links) {
     g.append(
       svgEl('line', {
-        x1: String(x(o.sourceT)),
+        x1: String(x(link.fromT)),
         y1: String(yIn + 10),
-        x2: String(x(o.t)),
+        x2: String(x(link.toT)),
         y2: String(yOut - 10),
         class: 'tl-link',
       }),
@@ -130,10 +131,25 @@ export function renderTimeline(trace: Trace): SVGSVGElement {
   }
 
   for (const m of trace.outputs) {
-    g.append(
-      svgEl('circle', { cx: String(x(m.t)), cy: String(yOut), r: '9', class: 'tl-out' }),
-      svgEl('text', { x: String(x(m.t)), y: String(yOut + 3.5), class: 'tl-out-label', 'text-anchor': 'middle' }, m.label),
-    );
+    if (m.label.length > 1) {
+      const pillW = m.label.length * 6.5 + 10;
+      g.append(
+        svgEl('rect', {
+          x: String(x(m.t) - pillW / 2),
+          y: String(yOut - 9),
+          width: String(pillW),
+          height: '18',
+          rx: '9',
+          class: 'tl-out',
+        }),
+        svgEl('text', { x: String(x(m.t)), y: String(yOut + 3.5), class: 'tl-out-label tl-out-label-wide', 'text-anchor': 'middle' }, m.label),
+      );
+    } else {
+      g.append(
+        svgEl('circle', { cx: String(x(m.t)), cy: String(yOut), r: '9', class: 'tl-out' }),
+        svgEl('text', { x: String(x(m.t)), y: String(yOut + 3.5), class: 'tl-out-label', 'text-anchor': 'middle' }, m.label),
+      );
+    }
   }
 
   svg.append(g);

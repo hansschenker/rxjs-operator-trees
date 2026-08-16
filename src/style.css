@@ -412,6 +412,11 @@ body {
   font-weight: 600;
 }
 
+.tl-out-label-wide {
+  font-size: 9px;
+  font-family: 'Cascadia Code', Consolas, monospace;
+}
+
 .tl-span {
   fill: var(--magenta-soft);
   stroke: var(--magenta);
